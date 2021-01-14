@@ -6,6 +6,7 @@ import csv
 import os
 from urllib.request import urlopen, Request
 from bs4 import BeautifulSoup as soup
+import json
 
 '''
 Function to request page html from given URL
@@ -49,18 +50,18 @@ def get_listing_links(page_html):
         id_temp_dict = {}
         page_soup = soup(page_html, "html.parser")
         #grab all divs with a class of result
-        results = page_soup.findAll("ul", {"class": "jlGrid hover"})
+        results = page_soup.findAll("ul", {"class": "jlGrid hover p-0"})
         for result in results:
             links = result.findAll('a')
             for a in links:
-                formatted_link = "http://www.glassdoor.sg" + a['href']
+                formatted_link = "http://www.glassdoor.com" + a['href']
                 id_temp = formatted_link[-10:]
                 if id_temp not in id_temp_dict.keys():
                     id_temp_dict[id_temp] = None
                     obj_links[formatted_link] = None
         return list(obj_links.keys())
     except Exception as e:
-        # print(e)
+        print(e)
         pass
 
 '''
@@ -76,23 +77,18 @@ def jobpage_scrape(extracted_link, page_html):
         jobpage_info['job_link'] = None
 
     try:
-        job_title = page_soup.find("div", {"class": "jobViewJobTitleWrap"})
-        jobpage_info['job_title'] = job_title.get_text()
+        info = json.loads(page_soup.find('script', type='application/ld+json').text)
+        jobpage_info['job_title'] = info['title']
+        jobpage_info['Type'] = info['employmentType']
+        jobpage_info['Date_posted'] = info['datePosted']
+        jobpage_info['Organization'] = info['hiringOrganization']['name']
+        jobpage_info['Location'] = ','.join(list(info['jobLocation']['address'].values())[1:3])
+        
     except Exception as e:
         # print(e)
         jobpage_info['job_title'] = None
-
     try:
-        sum_col = page_soup.find("div", {"class": "summaryColumn"})
-        summary_column = sum_col.get_text()
-        summary_column = summary_column.replace("\xa0–\xa0", ' ')
-        jobpage_info['summary_column'] = summary_column
-    except Exception as e:
-        # print(e)
-        jobpage_info['summary_column'] = None
-
-    try:
-        j_d = page_soup.find("div", {"class": "jobDescriptionContent desc"})
+        j_d = page_soup.find("div", {"class": "desc"})
         job_desc = j_d.get_text()
         pattern = '\n' + '{2,}'
         job_desc = re.sub(pattern, '\n', job_desc)
@@ -103,6 +99,7 @@ def jobpage_scrape(extracted_link, page_html):
         jobpage_info['job_description'] = None
 
     return jobpage_info
+    #return jobpage_info
 
 '''
 Function to write a dictionary of scrapped information onto a csv file
@@ -110,7 +107,7 @@ Function to write a dictionary of scrapped information onto a csv file
 def write_to_file(jobpage_info):
     with open('output.csv', 'a', newline='', encoding="utf-8") as f:
         try:
-            writer = csv.writer(f)
+            writer = csv.writer(f,delimiter='|')
             writer.writerow(jobpage_info.values())
         except Exception as e:
             # print(e)

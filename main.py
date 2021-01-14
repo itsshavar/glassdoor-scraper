@@ -46,13 +46,14 @@ while run:
     
     toc = time()
     base_html = page_html(base_url)
+    #print(base_html)
     extracted_links = get_listing_links(base_html)
     tic = time()
-
+    
     print("Found {} job links in page {}: {}". format(len(extracted_links), page_num, base_url))
     print("Time taken to extract page links: {}".format(tic - toc))
     print("Starting scape and writing to csv...\n")
-
+      
     i = 0
     toc = time()
     for extracted_link in extracted_links:
@@ -81,3 +82,4 @@ while run:
     if run == True:
         print("Moving onto next page...")
     page_num = page_num + 1
+    
